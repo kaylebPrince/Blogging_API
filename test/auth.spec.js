@@ -1,9 +1,7 @@
 const request = require('supertest');
 const connect = require('./database');
-const UserModel = requrie('../Models/UserModel.js');
+const UserModel = require('../Models/UserModel.js');
 const app = require('../app');
-const { describe, afterEach, it } = require('node:test');
-const { application } = require('express');
 
 describe('Auth: Signup', () => {
     let conn;
@@ -24,17 +22,34 @@ describe('Auth: Signup', () => {
         const response = await request(app).post('/signup')
         .set('content-type', 'application/json')
         .send({
-            email: 'kaylebprince@gmail.com',
-            password: 'Caleb123',
-            firstName: 'Caleb',
+            email: 'ibifiriagarah@gmail.com',
+            password: 'Ibifiri123',
+            firstName: 'Ibifiri',
             lastName: 'Agarah'
         })
 
         expect(response.status).toBe(201)
         expect(response.body).toHaveProperty('message')
         expect(response.body).toHaveProperty('user')
-        expect(response.body.user).toHaveProperty('email', 'kaylebPrince@gmail.com')
-        expect(response.body.user).toHaveProperty('firstName', 'Caleb')
+        expect(response.body.user).toHaveProperty('email', 'ibifiriagarah@gmail.com')
+        expect(response.body.user).toHaveProperty('firstName', 'Ibifiri')
         expect(response.body.user).toHaveProperty('lastName', 'Agarah')
+    })
+
+
+    it('should login a user', async()=>{
+        const user = await UserModel.create({email: 'ibifiriagarah@gmail.com', password: 'Ibifiri123'});
+
+        const response = await request(app)
+        .post('/login')
+        .set('content-type', 'application/json')
+        .send({
+            email: 'ibifiriagarah@gmail.com',
+            password: 'Ibifiri123'
+        });
+
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('token');
     })
 })

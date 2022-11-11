@@ -55,13 +55,14 @@ exports.loginPage = async(req,res)=>{
 }
 
 exports.signup = async(req,res) =>{
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, username, email, password } = req.body;
     // const user = await UserModel.findOne({user: req.user});
 
     try{
         const user = await UserModel.create({
             firstName,
             lastName,
+            username,
             email,
             password
         });
@@ -84,14 +85,9 @@ exports.login = async (req,res)=>{
         const user = await UserModel.login(email, password);
         const token = await createToken(user._id);
         res.cookie("jwt", token, {httpOnly: true, maxAge: maxAge*1000});
-        res.status(200).json({status:true, data:user});
+        res.status(200).json({status:true, message:"Logged in successfully!", data:user});
     }catch (err){
         const errors = errorHandler(err);
         res.status(400).json({status:false, error: errors});
     }
 };
-
-exports.log_out = (req, res)=>{
-    res.cookies("jwt", "", {maxAge:1});
-    res.status(200).json({message: "You signed out"});
-}

@@ -1,5 +1,5 @@
 const express = require('express');
-const { createBlogPost, getPosts, getPost, editPost, deletePost, userBlogPosts } = require('../Controllers/blogController');
+const { createBlogPost, getPost, editPost, deletePost, userBlogPosts, getAllPublishedPosts } = require('../Controllers/blogController');
 const { AuthProcedure } = require('../middleware/basicAuth');
 
 const blogRouter = express.Router();
@@ -10,10 +10,10 @@ blogRouter.post('/newPost', AuthProcedure, createBlogPost);
 
 blogRouter.get('/:id', AuthProcedure, getPost);
 
-blogRouter.get('/blogs', getPosts);
+blogRouter.get('/published-blogs', getAllPublishedPosts);
 
-blogRouter.patch('/edit/:id', AuthProcedure, editPost);
+blogRouter.patch('/:id', AuthProcedure, editPost);
 
-blogRouter.delete('/delete/:id', AuthProcedure, deletePost);
+blogRouter.delete('/:id', AuthProcedure, deletePost);
 
 module.exports = blogRouter;

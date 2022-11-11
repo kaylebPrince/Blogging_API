@@ -1,4 +1,4 @@
-module.exports.readTime = (body) => {
+exports.readTime = (post) => {
     const Words = post.split(" ").length;
 
     let wordsPerMinute = Words/200;

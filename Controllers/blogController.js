@@ -1,6 +1,6 @@
 const blogModel = require('../Models/blogModel');
 const UserModel = require('../Models/UserModel');
-const {reading_time} = require("./utilityFile");
+const { readTime } = require("./utilityFile");
 
 const errorHandler = (err) => {
     console.log(err.message, err.code);
@@ -27,30 +27,33 @@ const errorHandler = (err) => {
 
 exports.createBlogPost = async(req, res) => {
     const {title, description, tags, body } = req.body;
-    const user = req.user;
-    const blogPost = await blogModel.create({
-        title,
-        description: description || title,
-        body,
-        author: await user._id,
-        reading_time,
-        tags    
-    });
 
-    console.log("reading time", reading_time)
+    try{
 
-    res.status(201).json({status: true, blogPost});
-    // } catch (err) {
-    //     const error = errorHandler(err);
-    //     res.status(400).json({status: false, error});
-    // }
+        const blogPost = await blogModel.create({
+            title,
+            state: "published",
+            description: description || title,
+            body,
+            author: await req.user._id,
+            reading_time: readTime(body),
+            tags
+        });
+        // const readTime = reading_time.readTime(body)
+        // console.log(readTime);
+        body.state = "published";
+        res.status(201).json({status: true, blogPost});
+    }catch(err){
+        const error = errorHandler(err);
+        res.status(400).json({status: false, error: error});
+    }
 };
 
 // Get a blog post by id
-module.exports.getPost = async(req,res) => {
+exports.getPost = async(req,res) => {
     try{
         const { id } = req.params;
-        const blogPost = await blogModel.findById(id).populate("author", { email:1});
+        const blogPost = await blogModel.findById(id).populate("author", { username:1});
     
         if(blogPost.state !== "published") {
             return res.status(403).json({
@@ -73,7 +76,7 @@ module.exports.getPost = async(req,res) => {
 }
 
 //  Get all published blog posts
-module.exports.getPosts = async(req,res) => {
+exports.getAllPublishedPosts = async(req,res) => {
     const { query } = req;
     const {
         auth,
@@ -85,22 +88,22 @@ module.exports.getPosts = async(req,res) => {
         per_page = 20
     } = query;
 
-    // let author;
+    let author;
 
-    // if(auth) {
-    //     const user = await UserModel.find({: auth});
+    if(auth) {
+        const user = await UserModel.find({username: auth});
         
-    //     if(user){
-    //         try{
-    //             author = user[0]._id;
-    //         }catch (err){
-    //             res.status(400).json({
-    //                 status: "false",
-    //                 error: "email does not exist"
-    //             });
-    //         }
-    //     }
-    // }
+        if(user){
+            try{
+                author = user[0]._id;
+            }catch (err){
+                res.status(400).json({
+                    status: "false",
+                    error: "username does not exist"
+                });
+            }
+        }
+    }
 
 
     if(title){
@@ -110,9 +113,9 @@ module.exports.getPosts = async(req,res) => {
     const findQuery = { state: "published"};
     const setQuery = { updatedAt: -1, createdAt: 1};
 
-    // if(author) {
-    //     findQuery.author = author;
-    // }
+    if(author) {
+        findQuery.author = author;
+    }
 
     if(tags){
         findQuery.tags = tags;
@@ -130,7 +133,7 @@ module.exports.getPosts = async(req,res) => {
         const blogPosts = await blogModel
         .find(findQuery)
         .populate("author",{
-            email: 1
+            username: 1
         })
         .sort(setQuery)
         .skip(page * per_page)
@@ -151,18 +154,19 @@ module.exports.getPosts = async(req,res) => {
 
 
 module.exports.editPost = async(req, res) => {
-    const user = req.user.email;
+    const user = req.user.username;
     try{
         const { id } = req.params;
-        const blogPost = await blogModel.findById(id).populate("author", {email: 1});
-        const author = blogPost.author.email;
+        const blogPost = await blogModel.findById(id).populate("author", {username: 1});
+        const author = blogPost.author.username;
         const blogId = blogPost.id;
+        console.log("blog id: ", blogId);
 
         if(user === author){
             const editedPost = await blogModel.findByIdAndUpdate(id,{
                 ...req.body,
             });
-            res.status(200).json({status: true, message: "blog succcessfully edited", editedPost});
+            res.status(200).json({status: true, message: "recently edited", editedPost});
         } else {
             throw new Error("You are not authorized to edit this post");
         }
@@ -171,15 +175,24 @@ module.exports.editPost = async(req, res) => {
     }
 }
 
-module.exports.deletePost = async(req, res) => {
-    const user = req.user.email;
+// exports.deletePost = async(req,res)=>{
+//     try{
+//         const { id } = req.params;
+
+//         const blogPost = await blogModel.deleteOne({})
+//     }
+// };
+
+exports.deletePost = async(req, res) => {
+    const user = req.user.username;
     try{
         const { id } = req.params
-        const blogPost = await blogModel.findById(id).populate("author", {email:1});
-        const author = blogPost.author.email;
+        const blogPost = await blogModel.findById(id).populate("author", {username:1});
+        const author = blogPost.author.username;
 
         if(user === author){
-            const deleteBlogPost = await blogModel.findByIdAndDelete(id);
+            const deletedBlogPost = await blogModel.findByIdAndDelete(id);
+            console.log("deleted blog post: ",deletedBlogPost);
             res.status(200).json({
                 status: true, message: "Blog post deleted",
             });
@@ -191,7 +204,7 @@ module.exports.deletePost = async(req, res) => {
     }
 };
 
-module.exports.userBlogPosts = async(req, res)=>{
+exports.userBlogPosts = async(req, res)=>{
     const userId = req.user._id.toString();
 
     try{
@@ -209,7 +222,7 @@ module.exports.userBlogPosts = async(req, res)=>{
         }
 
         const blogPosts = await blogModel.find(findQuery)
-            .populate("author", { email: 1})
+            .populate("author", { username: 1})
             .sort("asc")
             .skip(page*per_page)
             .limit(per_page);
